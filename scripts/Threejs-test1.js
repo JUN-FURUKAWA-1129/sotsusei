@@ -309,5 +309,93 @@ function test5(){
 }
 
 function test6(){
+        function init() {
+            // サイズを指定
+            const width = 960;
+            const height = 540;
     
+            // レンダラーを作成
+            const renderer = new THREE.WebGLRenderer({
+              canvas: document.querySelector('#canvas6')
+            });
+            renderer.setSize(width, height);
+    
+            // シーンを作成
+            const scene = new THREE.Scene();
+    
+            // カメラを作成
+            const camera = new THREE.PerspectiveCamera(45, width / height);
+            // カメラの初期座標を設定
+            camera.position.set(0, 0, 1000);
+    
+            // カメラコントローラーを作成
+            const controls = new THREE.OrbitControls(camera);
+    
+            // 滑らかにカメラコントローラーを制御する
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.2;
+    
+            // 平行光源を作成
+            const directionalLight = new THREE.DirectionalLight(0xffffff);
+            directionalLight.position.set(1, 1, 1);
+            scene.add(directionalLight);
+    
+            // マテリアルを作成
+            const material = new THREE.MeshStandardMaterial({
+              map: new THREE.TextureLoader().load('../images/cyber-city.jpg')
+            });
+    
+            // 球体の形状を作成します
+            const geometry = new THREE.SphereGeometry(300, 30, 30);
+            // 形状とマテリアルからメッシュを作成します
+            const earthMesh = new THREE.Mesh(geometry, material);
+            // シーンにメッシュを追加します
+            scene.add(earthMesh);
+    
+            // 星屑を作成します (カメラの動きをわかりやすくするため)
+            createStarField();
+    
+            function createStarField() {
+              // 形状データを作成
+              const geometry = new THREE.Geometry();
+              // 個数は日付の数に比例させる
+              const numParticles = 1000;
+              const SIZE = 3000;
+              for (let i = 0; i < numParticles; i++) {
+                geometry.vertices.push(
+                  new THREE.Vector3(
+                    SIZE * (Math.random() - 0.5),
+                    SIZE * (Math.random() - 0.5),
+                    SIZE * (Math.random() - 0.5)
+                  )
+                );
+              }
+              // マテリアルを作成
+              const material = new THREE.PointsMaterial({
+                size: 10,
+                color: 0xffffff
+              });
+    
+              // 物体を作成
+              const mesh = new THREE.Points(geometry, material);
+              scene.add(mesh);
+            }
+    
+            tick();
+    
+            // 毎フレーム時に実行されるループイベントです
+            function tick() {
+              // 地球は常に回転させておく
+              earthMesh.rotation.y += 0.00001;
+    
+              // カメラコントローラーを更新
+              controls.update();
+    
+              // レンダリング
+              renderer.render(scene, camera);
+    
+              requestAnimationFrame(tick);
+            }
+          }
+    init();
 }
