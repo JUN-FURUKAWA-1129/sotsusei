@@ -14,3 +14,7 @@ p{
 a:hover{
     color: brown;
 }
+
+body{
+    margin:0;
+}

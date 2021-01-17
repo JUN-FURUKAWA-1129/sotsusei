@@ -3,6 +3,7 @@
     <!--headはブラウザに表示されない部分を-->
     <head>
         <meta charset="utf-8" >
+        <meta name="viewport" content="width=device-width, initial-scale=1"/>
         <link href="../styles/test-2.css" rel="stylesheet" type="text/css">
         <title>デジタル都庁</title>
         <script defer src="../scripts/test-2.js"></script>
@@ -16,11 +17,8 @@
 
         <!--Three.js関係-->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/99/three.js"></script>
-        <script src="../scripts/OrbitControls.js"></script>
-        <script src="../scripts/ObjectLoader.js" ></script>
-        <script src="../scripts/three.module.js" ></script>
-        <script src="../scripts/3DMLoader.js" ></script>
-
+        <script src="../scripts/OrbitControls.js" type="module"></script>
+        <script src="../scripts/three.module.js" type="module"></script>
 
        <h1 class="midashi">HELLO DIGITAL TOKYO</h1>
         <img src="../images/cyber-city.jpg" width="1280" height="720" border="3" alt="cybercity">
@@ -79,9 +77,6 @@
         <br>
         <input type="button" value="test6" onclick="test6();"/>
         <canvas id="canvas6"></canvas>
-        <br>
-        <input type="button" value="test7" onclick="test7();"/>
-        <canvas id="canvas7"></canvas>
-
+        
     </body>
 </html>

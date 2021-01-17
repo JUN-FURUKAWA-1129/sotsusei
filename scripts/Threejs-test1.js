@@ -309,6 +309,7 @@ function test5(){
 }
 
 function test6(){
+  
         function init() {
             // サイズを指定
             const width = 960;
