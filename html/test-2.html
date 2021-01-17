@@ -11,10 +11,16 @@
 
     <!--bodyはブラウザに表示される部分を-->
     <body>
+        
+        <script src="../scripts/Threejs-test1.js"></script>
+
         <!--Three.js関係-->
-       <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/99/three.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/99/three.js"></script>
         <script src="../scripts/OrbitControls.js"></script>
         <script src="../scripts/ObjectLoader.js" ></script>
+        <script src="../scripts/three.module.js" ></script>
+        <script src="../scripts/3DMLoader.js" ></script>
+
 
        <h1 class="midashi">HELLO DIGITAL TOKYO</h1>
         <img src="../images/cyber-city.jpg" width="1280" height="720" border="3" alt="cybercity">
@@ -55,9 +61,7 @@
         </table>
         <button>ユーザーを変更</button>
         <br>
-        <button onclick="location.href='THREEjs-examles.html'">THREE.js　テストページ</button>
-        <br>
-        <button onclick="location.href='THREEjs-model-test.html'">THREE.js　モデルテストページ</button>
+        <button onclick="location.href='webgl_loader_3dm.html'">THREE.js　モデルテストページ</button>
         <br>
         <input type="button" value="test1" onclick="test1();"/>
         <br>
@@ -77,81 +81,7 @@
         <canvas id="canvas6"></canvas>
         <br>
         <input type="button" value="test7" onclick="test7();"/>
-        <canvas id="canvas7"></canvas>-->
+        <canvas id="canvas7"></canvas>
 
-		<script type="module">
-
-			import * as THREE from '../scripts/three.module.js';
-
-			import { Rhino3dmLoader } from '../scripts/3DMLoader.js';
-
-			let container, controls;
-			let camera, scene, renderer;
-			let gui;
-
-			init();
-			animate();
-
-			function init() {
-
-				THREE.Object3D.DefaultUp = new THREE.Vector3( 0, 0, 1 );
-				container = document.createElement( 'div' );
-				document.body.appendChild( container );
-
-				camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 1000 );
-				camera.position.set( 26, - 40, 5 );
-
-				scene = new THREE.Scene();
-
-				const directionalLight = new THREE.DirectionalLight( 0xffffff );
-				directionalLight.position.set( 0, 0, 2 );
-				directionalLight.castShadow = true;
-				directionalLight.intensity = 2;
-				scene.add( directionalLight );
-
-				const loader = new Rhino3dmLoader();
-				loader.setLibraryPath( '../scripts/rhino3dm/');
-
-				loader.load( '../models/rhino.3dm', function ( object ) {
-
-					scene.add( object );
-					initGUI( object.userData.layers );
-
-				} );
-
-				const width = window.innerWidth;
-				const height = window.innerHeight;
-
-				renderer = new THREE.WebGLRenderer( { antialias: true } );
-				renderer.setPixelRatio( window.devicePixelRatio );
-				renderer.setSize( width, height );
-				container.appendChild( renderer.domElement );
-
-				window.addEventListener( 'resize', resize, false );
-
-			}
-
-			function resize() {
-
-				const width = window.innerWidth;
-				const height = window.innerHeight;
-
-				camera.aspect = width / height;
-				camera.updateProjectionMatrix();
-
-				renderer.setSize( width, height );
-
-			}
-
-			function animate() {
-
-				controls.update();
-				renderer.render( scene, camera );
-
-				requestAnimationFrame( animate );
-
-			}
-
-		</script>
     </body>
 </html>
