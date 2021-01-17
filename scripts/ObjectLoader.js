@@ -1,1178 +1,1146 @@
-import {
-	UVMapping,
-	CubeReflectionMapping,
-	CubeRefractionMapping,
-	EquirectangularReflectionMapping,
-	EquirectangularRefractionMapping,
-	CubeUVReflectionMapping,
-	CubeUVRefractionMapping,
+/*
+ * Autodesk 3DS threee.js file loader, based on lib3ds.
+ *
+ * Loads geometry with uv and materials basic properties with texture support.
+ *
+ * @author @tentone
+ * @author @timknip
+ * @class TDSLoader
+ * @constructor
+ */
 
-	RepeatWrapping,
-	ClampToEdgeWrapping,
-	MirroredRepeatWrapping,
+'use strict';
 
-	NearestFilter,
-	NearestMipmapNearestFilter,
-	NearestMipmapLinearFilter,
-	LinearFilter,
-	LinearMipmapNearestFilter,
-	LinearMipmapLinearFilter
-} from '../constants.js';
-import { BufferAttribute } from '../core/BufferAttribute.js';
-import { Color } from '../math/Color.js';
-import { Object3D } from '../core/Object3D.js';
-import { Group } from '../objects/Group.js';
-import { InstancedMesh } from '../objects/InstancedMesh.js';
-import { Sprite } from '../objects/Sprite.js';
-import { Points } from '../objects/Points.js';
-import { Line } from '../objects/Line.js';
-import { LineLoop } from '../objects/LineLoop.js';
-import { LineSegments } from '../objects/LineSegments.js';
-import { LOD } from '../objects/LOD.js';
-import { Mesh } from '../objects/Mesh.js';
-import { SkinnedMesh } from '../objects/SkinnedMesh.js';
-import { Bone } from '../objects/Bone.js';
-import { Skeleton } from '../objects/Skeleton.js';
-import { Shape } from '../extras/core/Shape.js';
-import { Fog } from '../scenes/Fog.js';
-import { FogExp2 } from '../scenes/FogExp2.js';
-import { HemisphereLight } from '../lights/HemisphereLight.js';
-import { SpotLight } from '../lights/SpotLight.js';
-import { PointLight } from '../lights/PointLight.js';
-import { DirectionalLight } from '../lights/DirectionalLight.js';
-import { AmbientLight } from '../lights/AmbientLight.js';
-import { RectAreaLight } from '../lights/RectAreaLight.js';
-import { LightProbe } from '../lights/LightProbe.js';
-import { OrthographicCamera } from '../cameras/OrthographicCamera.js';
-import { PerspectiveCamera } from '../cameras/PerspectiveCamera.js';
-import { Scene } from '../scenes/Scene.js';
-import { CubeTexture } from '../textures/CubeTexture.js';
-import { Texture } from '../textures/Texture.js';
-import { DataTexture } from '../textures/DataTexture.js';
-import { ImageLoader } from './ImageLoader.js';
-import { LoadingManager } from './LoadingManager.js';
-import { AnimationClip } from '../animation/AnimationClip.js';
-import { MaterialLoader } from './MaterialLoader.js';
-import { LoaderUtils } from './LoaderUtils.js';
-import { BufferGeometryLoader } from './BufferGeometryLoader.js';
-import { Loader } from './Loader.js';
-import { FileLoader } from './FileLoader.js';
-import * as Geometries from '../geometries/Geometries.js';
-import * as Curves from '../extras/curves/Curves.js';
-import { getTypedArray } from '../utils.js';
+THREE.TDSLoader = function ( manager ) {
 
-class ObjectLoader extends Loader {
+	this.manager = ( manager !== undefined ) ? manager : THREE.DefaultLoadingManager;
+	this.debug = false;
 
-	constructor( manager ) {
+	this.group = null;
+	this.position = 0;
 
-		super( manager );
+	this.materials = [];
+	this.meshes = [];
 
-	}
+	this.path = "";
 
-	load( url, onLoad, onProgress, onError ) {
+};
 
-		const scope = this;
+THREE.TDSLoader.prototype = {
 
-		const path = ( this.path === '' ) ? LoaderUtils.extractUrlBase( url ) : this.path;
-		this.resourcePath = this.resourcePath || path;
+	constructor: THREE.TDSLoader,
 
-		const loader = new FileLoader( this.manager );
-		loader.setPath( this.path );
-		loader.setRequestHeader( this.requestHeader );
-		loader.setWithCredentials( this.withCredentials );
-		loader.load( url, function ( text ) {
+	/**
+	 * Load 3ds file from url.
+	 *
+	 * @method load
+	 * @param {[type]} url URL for the file.
+	 * @param {Function} onLoad onLoad callback, receives group Object3D as argument.
+	 * @param {Function} onProgress onProgress callback.
+	 * @param {Function} onError onError callback.
+	 */
+	load: function ( url, onLoad, onProgress, onError ) {
 
-			let json = null;
+		var scope = this;
 
-			try {
+		var loader = new THREE.FileLoader( this.manager );
 
-				json = JSON.parse( text );
+		loader.setResponseType( 'arraybuffer' );
 
-			} catch ( error ) {
+		loader.load( url, function ( data ) {
 
-				if ( onError !== undefined ) onError( error );
-
-				console.error( 'THREE:ObjectLoader: Can\'t parse ' + url + '.', error.message );
-
-				return;
-
-			}
-
-			const metadata = json.metadata;
-
-			if ( metadata === undefined || metadata.type === undefined || metadata.type.toLowerCase() === 'geometry' ) {
-
-				console.error( 'THREE.ObjectLoader: Can\'t load ' + url );
-				return;
-
-			}
-
-			scope.parse( json, onLoad );
+			onLoad( scope.parse( data ) );
 
 		}, onProgress, onError );
 
-	}
+	},
 
-	parse( json, onLoad ) {
+	/**
+	 * Parse arraybuffer data and load 3ds file.
+	 *
+	 * @method parse
+	 * @param {ArrayBuffer} arraybuffer Arraybuffer data to be loaded.
+	 * @param {String} path Path for external resources.
+	 * @return {Object3D} Group loaded from 3ds file.
+	 */
+	parse: function ( arraybuffer ) {
 
-		const animations = this.parseAnimations( json.animations );
-		const shapes = this.parseShapes( json.shapes );
-		const geometries = this.parseGeometries( json.geometries, shapes );
+		this.group = new THREE.Group();
+		this.position = 0;
+		this.materials = [];
+		this.meshes = [];
 
-		const images = this.parseImages( json.images, function () {
+		this.readFile( arraybuffer );
 
-			if ( onLoad !== undefined ) onLoad( object );
+		for ( var i = 0; i < this.meshes.length; i ++ ) {
 
-		} );
-
-		const textures = this.parseTextures( json.textures, images );
-		const materials = this.parseMaterials( json.materials, textures );
-
-		const object = this.parseObject( json.object, geometries, materials, animations );
-		const skeletons = this.parseSkeletons( json.skeletons, object );
-
-		this.bindSkeletons( object, skeletons );
-
-		//
-
-		if ( onLoad !== undefined ) {
-
-			let hasImages = false;
-
-			for ( const uuid in images ) {
-
-				if ( images[ uuid ] instanceof HTMLImageElement ) {
-
-					hasImages = true;
-					break;
-
-				}
-
-			}
-
-			if ( hasImages === false ) onLoad( object );
+			this.group.add( this.meshes[ i ] );
 
 		}
 
-		return object;
+		return this.group;
 
-	}
+	},
 
-	parseShapes( json ) {
+	/**
+	 * Decode file content to read 3ds data.
+	 *
+	 * @method readFile
+	 * @param {ArrayBuffer} arraybuffer Arraybuffer data to be loaded.
+	 */
+	readFile: function ( arraybuffer ) {
 
-		const shapes = {};
+		var data = new DataView( arraybuffer );
+		var chunk = this.readChunk( data );
 
-		if ( json !== undefined ) {
+		if ( chunk.id === MLIBMAGIC || chunk.id === CMAGIC || chunk.id === M3DMAGIC ) {
 
-			for ( let i = 0, l = json.length; i < l; i ++ ) {
+			var next = this.nextChunk( data, chunk );
 
-				const shape = new Shape().fromJSON( json[ i ] );
+			while ( next !== 0 ) {
 
-				shapes[ shape.uuid ] = shape;
+				if ( next === M3D_VERSION ) {
 
-			}
+					var version = this.readDWord( data );
+					this.debugMessage( '3DS file version: ' + version );
 
-		}
+				} else if ( next === MDATA ) {
 
-		return shapes;
-
-	}
-
-	parseSkeletons( json, object ) {
-
-		const skeletons = {};
-		const bones = {};
-
-		// generate bone lookup table
-
-		object.traverse( function ( child ) {
-
-			if ( child.isBone ) bones[ child.uuid ] = child;
-
-		} );
-
-		// create skeletons
-
-		if ( json !== undefined ) {
-
-			for ( let i = 0, l = json.length; i < l; i ++ ) {
-
-				const skeleton = new Skeleton().fromJSON( json[ i ], bones );
-
-				skeletons[ skeleton.uuid ] = skeleton;
-
-			}
-
-		}
-
-		return skeletons;
-
-	}
-
-	parseGeometries( json, shapes ) {
-
-		const geometries = {};
-		let geometryShapes;
-
-		if ( json !== undefined ) {
-
-			const bufferGeometryLoader = new BufferGeometryLoader();
-
-			for ( let i = 0, l = json.length; i < l; i ++ ) {
-
-				let geometry;
-				const data = json[ i ];
-
-				switch ( data.type ) {
-
-					case 'PlaneGeometry':
-					case 'PlaneBufferGeometry':
-
-						geometry = new Geometries[ data.type ](
-							data.width,
-							data.height,
-							data.widthSegments,
-							data.heightSegments
-						);
-
-						break;
-
-					case 'BoxGeometry':
-					case 'BoxBufferGeometry':
-					case 'CubeGeometry': // backwards compatible
-
-						geometry = new Geometries[ data.type ](
-							data.width,
-							data.height,
-							data.depth,
-							data.widthSegments,
-							data.heightSegments,
-							data.depthSegments
-						);
-
-						break;
-
-					case 'CircleGeometry':
-					case 'CircleBufferGeometry':
-
-						geometry = new Geometries[ data.type ](
-							data.radius,
-							data.segments,
-							data.thetaStart,
-							data.thetaLength
-						);
-
-						break;
-
-					case 'CylinderGeometry':
-					case 'CylinderBufferGeometry':
-
-						geometry = new Geometries[ data.type ](
-							data.radiusTop,
-							data.radiusBottom,
-							data.height,
-							data.radialSegments,
-							data.heightSegments,
-							data.openEnded,
-							data.thetaStart,
-							data.thetaLength
-						);
-
-						break;
-
-					case 'ConeGeometry':
-					case 'ConeBufferGeometry':
-
-						geometry = new Geometries[ data.type ](
-							data.radius,
-							data.height,
-							data.radialSegments,
-							data.heightSegments,
-							data.openEnded,
-							data.thetaStart,
-							data.thetaLength
-						);
-
-						break;
-
-					case 'SphereGeometry':
-					case 'SphereBufferGeometry':
-
-						geometry = new Geometries[ data.type ](
-							data.radius,
-							data.widthSegments,
-							data.heightSegments,
-							data.phiStart,
-							data.phiLength,
-							data.thetaStart,
-							data.thetaLength
-						);
-
-						break;
-
-					case 'DodecahedronGeometry':
-					case 'DodecahedronBufferGeometry':
-					case 'IcosahedronGeometry':
-					case 'IcosahedronBufferGeometry':
-					case 'OctahedronGeometry':
-					case 'OctahedronBufferGeometry':
-					case 'TetrahedronGeometry':
-					case 'TetrahedronBufferGeometry':
-
-						geometry = new Geometries[ data.type ](
-							data.radius,
-							data.detail
-						);
-
-						break;
-
-					case 'RingGeometry':
-					case 'RingBufferGeometry':
-
-						geometry = new Geometries[ data.type ](
-							data.innerRadius,
-							data.outerRadius,
-							data.thetaSegments,
-							data.phiSegments,
-							data.thetaStart,
-							data.thetaLength
-						);
-
-						break;
-
-					case 'TorusGeometry':
-					case 'TorusBufferGeometry':
-
-						geometry = new Geometries[ data.type ](
-							data.radius,
-							data.tube,
-							data.radialSegments,
-							data.tubularSegments,
-							data.arc
-						);
-
-						break;
-
-					case 'TorusKnotGeometry':
-					case 'TorusKnotBufferGeometry':
-
-						geometry = new Geometries[ data.type ](
-							data.radius,
-							data.tube,
-							data.tubularSegments,
-							data.radialSegments,
-							data.p,
-							data.q
-						);
-
-						break;
-
-					case 'TubeGeometry':
-					case 'TubeBufferGeometry':
-
-						// This only works for built-in curves (e.g. CatmullRomCurve3).
-						// User defined curves or instances of CurvePath will not be deserialized.
-						geometry = new Geometries[ data.type ](
-							new Curves[ data.path.type ]().fromJSON( data.path ),
-							data.tubularSegments,
-							data.radius,
-							data.radialSegments,
-							data.closed
-						);
-
-						break;
-
-					case 'LatheGeometry':
-					case 'LatheBufferGeometry':
-
-						geometry = new Geometries[ data.type ](
-							data.points,
-							data.segments,
-							data.phiStart,
-							data.phiLength
-						);
-
-						break;
-
-					case 'PolyhedronGeometry':
-					case 'PolyhedronBufferGeometry':
-
-						geometry = new Geometries[ data.type ](
-							data.vertices,
-							data.indices,
-							data.radius,
-							data.details
-						);
-
-						break;
-
-					case 'ShapeGeometry':
-					case 'ShapeBufferGeometry':
-
-						geometryShapes = [];
-
-						for ( let j = 0, jl = data.shapes.length; j < jl; j ++ ) {
-
-							const shape = shapes[ data.shapes[ j ] ];
-
-							geometryShapes.push( shape );
-
-						}
-
-						geometry = new Geometries[ data.type ](
-							geometryShapes,
-							data.curveSegments
-						);
-
-						break;
-
-
-					case 'ExtrudeGeometry':
-					case 'ExtrudeBufferGeometry':
-
-						geometryShapes = [];
-
-						for ( let j = 0, jl = data.shapes.length; j < jl; j ++ ) {
-
-							const shape = shapes[ data.shapes[ j ] ];
-
-							geometryShapes.push( shape );
-
-						}
-
-						const extrudePath = data.options.extrudePath;
-
-						if ( extrudePath !== undefined ) {
-
-							data.options.extrudePath = new Curves[ extrudePath.type ]().fromJSON( extrudePath );
-
-						}
-
-						geometry = new Geometries[ data.type ](
-							geometryShapes,
-							data.options
-						);
-
-						break;
-
-					case 'BufferGeometry':
-					case 'InstancedBufferGeometry':
-
-						geometry = bufferGeometryLoader.parse( data );
-
-						break;
-
-					case 'Geometry':
-
-						console.error( 'THREE.ObjectLoader: Loading "Geometry" is not supported anymore.' );
-
-						break;
-
-					default:
-
-						console.warn( 'THREE.ObjectLoader: Unsupported geometry type "' + data.type + '"' );
-
-						continue;
-
-				}
-
-				geometry.uuid = data.uuid;
-
-				if ( data.name !== undefined ) geometry.name = data.name;
-				if ( geometry.isBufferGeometry === true && data.userData !== undefined ) geometry.userData = data.userData;
-
-				geometries[ data.uuid ] = geometry;
-
-			}
-
-		}
-
-		return geometries;
-
-	}
-
-	parseMaterials( json, textures ) {
-
-		const cache = {}; // MultiMaterial
-		const materials = {};
-
-		if ( json !== undefined ) {
-
-			const loader = new MaterialLoader();
-			loader.setTextures( textures );
-
-			for ( let i = 0, l = json.length; i < l; i ++ ) {
-
-				const data = json[ i ];
-
-				if ( data.type === 'MultiMaterial' ) {
-
-					// Deprecated
-
-					const array = [];
-
-					for ( let j = 0; j < data.materials.length; j ++ ) {
-
-						const material = data.materials[ j ];
-
-						if ( cache[ material.uuid ] === undefined ) {
-
-							cache[ material.uuid ] = loader.parse( material );
-
-						}
-
-						array.push( cache[ material.uuid ] );
-
-					}
-
-					materials[ data.uuid ] = array;
+					this.resetPosition( data );
+					this.readMeshData( data );
 
 				} else {
 
-					if ( cache[ data.uuid ] === undefined ) {
-
-						cache[ data.uuid ] = loader.parse( data );
-
-					}
-
-					materials[ data.uuid ] = cache[ data.uuid ];
+					this.debugMessage( 'Unknown main chunk: ' + next.toString( 16 ) );
 
 				}
 
-			}
-
-		}
-
-		return materials;
-
-	}
-
-	parseAnimations( json ) {
-
-		const animations = {};
-
-		if ( json !== undefined ) {
-
-			for ( let i = 0; i < json.length; i ++ ) {
-
-				const data = json[ i ];
-
-				const clip = AnimationClip.parse( data );
-
-				animations[ clip.uuid ] = clip;
+				next = this.nextChunk( data, chunk );
 
 			}
 
 		}
 
-		return animations;
+		this.debugMessage( 'Parsed ' + this.meshes.length + ' meshes' );
 
-	}
+	},
 
-	parseImages( json, onLoad ) {
+	/**
+	 * Read mesh data chunk.
+	 *
+	 * @method readMeshData
+	 * @param {Dataview} data Dataview in use.
+	 */
+	readMeshData: function ( data ) {
 
-		const scope = this;
-		const images = {};
+		var chunk = this.readChunk( data );
+		var next = this.nextChunk( data, chunk );
 
-		let loader;
+		while ( next !== 0 ) {
 
-		function loadImage( url ) {
+			if ( next === MESH_VERSION ) {
 
-			scope.manager.itemStart( url );
+				var version = + this.readDWord( data );
+				this.debugMessage( 'Mesh Version: ' + version );
 
-			return loader.load( url, function () {
+			} else if ( next === MASTER_SCALE ) {
 
-				scope.manager.itemEnd( url );
+				var scale = this.readFloat( data );
+				this.debugMessage( 'Master scale: ' + scale );
+				this.group.scale.set( scale, scale, scale );
 
-			}, undefined, function () {
+			} else if ( next === NAMED_OBJECT ) {
 
-				scope.manager.itemError( url );
-				scope.manager.itemEnd( url );
+				this.debugMessage( 'Named Object' );
+				this.resetPosition( data );
+				this.readNamedObject( data );
 
-			} );
+			} else if ( next === MAT_ENTRY ) {
 
-		}
-
-		function deserializeImage( image ) {
-
-			if ( typeof image === 'string' ) {
-
-				const url = image;
-
-				const path = /^(\/\/)|([a-z]+:(\/\/)?)/i.test( url ) ? url : scope.resourcePath + url;
-
-				return loadImage( path );
+				this.debugMessage( 'Material' );
+				this.resetPosition( data );
+				this.readMaterialEntry( data );
 
 			} else {
 
-				if ( image.data ) {
-
-					return {
-						data: getTypedArray( image.type, image.data ),
-						width: image.width,
-						height: image.height
-					};
-
-				} else {
-
-					return null;
-
-				}
+				this.debugMessage( 'Unknown MDATA chunk: ' + next.toString( 16 ) );
 
 			}
 
+			next = this.nextChunk( data, chunk );
+
 		}
 
-		if ( json !== undefined && json.length > 0 ) {
+	},
 
-			const manager = new LoadingManager( onLoad );
+	/**
+	 * Read named object chunk.
+	 *
+	 * @method readNamedObject
+	 * @param {Dataview} data Dataview in use.
+	 */
+	readNamedObject: function ( data ) {
 
-			loader = new ImageLoader( manager );
-			loader.setCrossOrigin( this.crossOrigin );
+		var chunk = this.readChunk( data );
+		var name = this.readString( data, 64 );
+		chunk.cur = this.position;
 
-			for ( let i = 0, il = json.length; i < il; i ++ ) {
+		var next = this.nextChunk( data, chunk );
+		while ( next !== 0 ) {
 
-				const image = json[ i ];
-				const url = image.url;
+			if ( next === N_TRI_OBJECT ) {
 
-				if ( Array.isArray( url ) ) {
+				this.resetPosition( data );
+				var mesh = this.readMesh( data );
+				mesh.name = name;
+				this.meshes.push( mesh );
 
-					// load array of images e.g CubeTexture
+			} else {
 
-					images[ image.uuid ] = [];
+				this.debugMessage( 'Unknown named object chunk: ' + next.toString( 16 ) );
 
-					for ( let j = 0, jl = url.length; j < jl; j ++ ) {
+			}
 
-						const currentUrl = url[ j ];
+			next = this.nextChunk( data, chunk );
 
-						const deserializedImage = deserializeImage( currentUrl );
+		}
 
-						if ( deserializedImage !== null ) {
+		this.endChunk( chunk );
 
-							if ( deserializedImage instanceof HTMLImageElement ) {
+	},
 
-								images[ image.uuid ].push( deserializedImage );
+	/**
+	 * Read material data chunk and add it to the material list.
+	 *
+	 * @method readMaterialEntry
+	 * @param {Dataview} data Dataview in use.
+	 */
+	readMaterialEntry: function ( data ) {
 
-							} else {
+		var chunk = this.readChunk( data );
+		var next = this.nextChunk( data, chunk );
+		var material = new THREE.MeshPhongMaterial();
 
-								// special case: handle array of data textures for cube textures
+		while ( next !== 0 ) {
 
-								images[ image.uuid ].push( new DataTexture( deserializedImage.data, deserializedImage.width, deserializedImage.height ) );
+			if ( next === MAT_NAME ) {
 
-							}
+				material.name = this.readString( data, 64 );
+				this.debugMessage( '   Name: ' + material.name );
 
-						}
+			} else if ( next === MAT_WIRE ) {
+
+				this.debugMessage( '   Wireframe' );
+				material.wireframe = true;
+
+			} else if ( next === MAT_WIRE_SIZE ) {
+
+				var value = this.readByte( data );
+				material.wireframeLinewidth = value;
+				this.debugMessage( '   Wireframe Thickness: ' + value );
+
+			} else if ( next === MAT_TWO_SIDE ) {
+
+				material.side = THREE.DoubleSide;
+				this.debugMessage( '   DoubleSided' );
+
+			} else if ( next === MAT_ADDITIVE ) {
+
+				this.debugMessage( '   Additive Blending' );
+				material.blending = THREE.AdditiveBlending;
+
+			} else if ( next === MAT_DIFFUSE ) {
+
+				this.debugMessage( '   Diffuse Color' );
+				material.color = this.readColor( data );
+
+			} else if ( next === MAT_SPECULAR ) {
+
+				this.debugMessage( '   Specular Color' );
+				material.specular = this.readColor( data );
+
+			} else if ( next === MAT_AMBIENT ) {
+
+				this.debugMessage( '   Ambient color' );
+				material.color = this.readColor( data );
+
+			} else if ( next === MAT_SHININESS ) {
+
+				var shininess = this.readWord( data );
+				material.shininess = shininess;
+				this.debugMessage( '   Shininess : ' + shininess );
+
+			} else if ( next === MAT_TEXMAP ) {
+
+				this.debugMessage( '   ColorMap' );
+				this.resetPosition( data );
+				material.map = this.readMap( data );
+
+			} else if ( next === MAT_BUMPMAP ) {
+
+				this.debugMessage( '   BumpMap' );
+				this.resetPosition( data );
+				material.bumpMap = this.readMap( data );
+
+			} else if ( next === MAT_OPACMAP ) {
+
+				this.debugMessage( '   OpacityMap' );
+				this.resetPosition( data );
+				material.alphaMap = this.readMap( data );
+
+			} else if ( next === MAT_SPECMAP ) {
+
+				this.debugMessage( '   SpecularMap' );
+				this.resetPosition( data );
+				material.specularMap = this.readMap( data );
+
+			} else {
+
+				this.debugMessage( '   Unknown material chunk: ' + next.toString( 16 ) );
+
+			}
+
+			next = this.nextChunk( data, chunk );
+
+		}
+
+		this.endChunk( chunk );
+
+		this.materials[ material.name ] = material;
+
+	},
+
+	/**
+	 * Read mesh data chunk.
+	 *
+	 * @method readMesh
+	 * @param {Dataview} data Dataview in use.
+	 */
+	readMesh: function ( data ) {
+
+		var chunk = this.readChunk( data );
+		var next = this.nextChunk( data, chunk );
+
+		var useBufferGeometry = false;
+		var geometry = null;
+		var uvs = [];
+
+		if ( useBufferGeometry ) {
+
+			geometry = new THREE.BufferGeometry();
+
+		}	else {
+
+			geometry = new THREE.Geometry();
+
+		}
+
+		var material = new THREE.MeshPhongMaterial();
+		var mesh = new THREE.Mesh( geometry, material );
+		mesh.name = 'mesh';
+
+		while ( next !== 0 ) {
+
+			if ( next === POINT_ARRAY ) {
+
+				var points = this.readWord( data );
+
+				this.debugMessage( '   Vertex: ' + points );
+
+				//BufferGeometry
+
+				if ( useBufferGeometry )	{
+
+					var vertices = [];
+					for ( var i = 0; i < points; i ++ )		{
+
+						vertices.push( this.readFloat( data ) );
+						vertices.push( this.readFloat( data ) );
+						vertices.push( this.readFloat( data ) );
 
 					}
 
-				} else {
+					geometry.addAttribute( 'position', new THREE.BufferAttribute( new Float32Array( vertices ), 3 ) );
 
-					// load single image
+				} else	{ //Geometry
 
-					const deserializedImage = deserializeImage( image.url );
+					for ( var i = 0; i < points; i ++ )		{
 
-					if ( deserializedImage !== null ) {
-
-						images[ image.uuid ] = deserializedImage;
+						geometry.vertices.push( new THREE.Vector3( this.readFloat( data ), this.readFloat( data ), this.readFloat( data ) ) );
 
 					}
 
 				}
 
+			} else if ( next === FACE_ARRAY ) {
+
+				this.resetPosition( data );
+				this.readFaceArray( data, mesh );
+
+			} else if ( next === TEX_VERTS ) {
+
+				var texels = this.readWord( data );
+
+				this.debugMessage( '   UV: ' + texels );
+
+				//BufferGeometry
+
+				if ( useBufferGeometry )	{
+
+					var uvs = [];
+					for ( var i = 0; i < texels; i ++ )		{
+
+						uvs.push( this.readFloat( data ) );
+						uvs.push( this.readFloat( data ) );
+
+					}
+					geometry.addAttribute( 'uv', new THREE.BufferAttribute( new Float32Array( uvs ), 2 ) );
+
+				} else { //Geometry
+
+					uvs = [];
+					for ( var i = 0; i < texels; i ++ )		{
+
+						uvs.push( new THREE.Vector2( this.readFloat( data ), this.readFloat( data ) ) );
+
+					}
+
+				}
+
+			} else if ( next === MESH_MATRIX ) {
+
+				this.debugMessage( '   Tranformation Matrix (TODO)' );
+
+				var values = [];
+				for ( var i = 0; i < 12; i ++ ) {
+
+					values[ i ] = this.readFloat( data );
+
+				}
+
+				var matrix = new THREE.Matrix4();
+
+				//X Line
+				matrix.elements[ 0 ] = values[ 0 ];
+				matrix.elements[ 1 ] = values[ 6 ];
+				matrix.elements[ 2 ] = values[ 3 ];
+				matrix.elements[ 3 ] = values[ 9 ];
+
+				//Y Line
+				matrix.elements[ 4 ] = values[ 2 ];
+				matrix.elements[ 5 ] = values[ 8 ];
+				matrix.elements[ 6 ] = values[ 5 ];
+				matrix.elements[ 7 ] = values[ 11 ];
+
+				//Z Line
+				matrix.elements[ 8 ] = values[ 1 ];
+				matrix.elements[ 9 ] = values[ 7 ];
+				matrix.elements[ 10 ] = values[ 4 ];
+				matrix.elements[ 11 ] = values[ 10 ];
+
+				//W Line
+				matrix.elements[ 12 ] = 0;
+				matrix.elements[ 13 ] = 0;
+				matrix.elements[ 14 ] = 0;
+				matrix.elements[ 15 ] = 1;
+
+				matrix.transpose();
+
+				var inverse = new THREE.Matrix4();
+				inverse.getInverse( matrix, true );
+				geometry.applyMatrix( inverse );
+
+				matrix.decompose( mesh.position, mesh.quaternion, mesh.scale );
+
+			} else {
+
+				this.debugMessage( '   Unknown mesh chunk: ' + next.toString( 16 ) );
+
 			}
+
+			next = this.nextChunk( data, chunk );
 
 		}
 
-		return images;
+		this.endChunk( chunk );
+
+		if ( ! useBufferGeometry ) {
+
+			//geometry.faceVertexUvs[0][faceIndex][vertexIndex]
+
+			if ( uvs.length > 0 ) {
+
+				var faceUV = [];
+
+				for ( var i = 0; i < geometry.faces.length; i ++ ) {
+
+					faceUV.push( [ uvs[ geometry.faces[ i ].a ], uvs[ geometry.faces[ i ].b ], uvs[ geometry.faces[ i ].c ] ] );
+
+				}
+
+				geometry.faceVertexUvs[ 0 ] = faceUV;
+
+			}
+
+			geometry.computeVertexNormals();
+
+		}
+
+		return mesh;
+
+	},
+
+	/**
+	 * Read face array data chunk.
+	 *
+	 * @method readFaceArray
+	 * @param {Dataview} data Dataview in use.
+	 * @param {Mesh} mesh Mesh to be filled with the data read.
+	 */
+	readFaceArray: function ( data, mesh ) {
+
+		var chunk = this.readChunk( data );
+		var faces = this.readWord( data );
+
+		this.debugMessage( '   Faces: ' + faces );
+
+		for ( var i = 0; i < faces; ++ i ) {
+
+			mesh.geometry.faces.push( new THREE.Face3( this.readWord( data ), this.readWord( data ), this.readWord( data ) ) );
+
+			var visibility = this.readWord( data );
+
+		}
+
+		//The rest of the FACE_ARRAY chunk is subchunks
+
+		while ( this.position < chunk.end ) {
+
+			var chunk = this.readChunk( data );
+
+			if ( chunk.id === MSH_MAT_GROUP ) {
+
+				this.debugMessage( '      Material Group' );
+
+				this.resetPosition( data );
+
+				var group = this.readMaterialGroup( data );
+
+				var material = this.materials[ group.name ];
+
+				if ( material !== undefined )	{
+
+					mesh.material = material;
+
+					if ( material.name === '' )		{
+
+						material.name = mesh.name;
+
+					}
+
+				}
+
+			} else {
+
+				this.debugMessage( '      Unknown face array chunk: ' + chunk.toString( 16 ) );
+
+			}
+
+			this.endChunk( chunk );
+
+		}
+
+		this.endChunk( chunk );
+
+	},
+
+	/**
+	 * Read texture map data chunk.
+	 *
+	 * @method readMap
+	 * @param {Dataview} data Dataview in use.
+	 * @return {Texture} Texture read from this data chunk.
+	 */
+	readMap: function ( data ) {
+
+		var chunk = this.readChunk( data );
+		var next = this.nextChunk( data, chunk );
+		var texture = {};
+
+		var loader = new THREE.TextureLoader();
+		loader.setPath( this.path );
+
+		while ( next !== 0 ) {
+
+			if ( next === MAT_MAPNAME ) {
+
+				var name = this.readString( data, 128 );
+				texture = loader.load( name );
+
+				this.debugMessage( '      File: ' + this.path + name );
+
+			} else if ( next === MAT_MAP_UOFFSET ) {
+
+				texture.offset.x = this.readFloat( data );
+				this.debugMessage( '      OffsetX: ' + texture.offset.x );
+
+			} else if ( next === MAT_MAP_VOFFSET ) {
+
+				texture.offset.y = this.readFloat( data );
+				this.debugMessage( '      OffsetY: ' + texture.offset.y );
+
+			} else if ( next === MAT_MAP_USCALE ) {
+
+				texture.repeat.x = this.readFloat( data );
+				this.debugMessage( '      RepeatX: ' + texture.repeat.x );
+
+			} else if ( next === MAT_MAP_VSCALE ) {
+
+				texture.repeat.y = this.readFloat( data );
+				this.debugMessage( '      RepeatY: ' + texture.repeat.y );
+
+			} else {
+
+				this.debugMessage( '      Unknown map chunk: ' + next.toString( 16 ) );
+
+			}
+
+			next = this.nextChunk( data, chunk );
+
+		}
+
+		this.endChunk( chunk );
+
+		return texture;
+
+	},
+
+	/**
+	 * Read material group data chunk.
+	 *
+	 * @method readMaterialGroup
+	 * @param {Dataview} data Dataview in use.
+	 * @return {Object} Object with name and index of the object.
+	 */
+	readMaterialGroup: function ( data ) {
+
+		var chunk = this.readChunk( data );
+		var name = this.readString( data, 64 );
+		var numFaces = this.readWord( data );
+
+		this.debugMessage( '         Name: ' + name );
+		this.debugMessage( '         Faces: ' + numFaces );
+
+		var index = [];
+		for ( var i = 0; i < numFaces; ++ i ) {
+
+			index.push( this.readWord( data ) );
+
+		}
+
+		return { name: name, index: index };
+
+	},
+
+	/**
+	 * Read a color value.
+	 *
+	 * @method readColor
+	 * @param {DataView} data Dataview.
+	 * @return {Color} Color value read..
+	 */
+	readColor: function ( data ) {
+
+		var chunk = this.readChunk( data );
+		var color = new THREE.Color();
+
+		if ( chunk.id === COLOR_24 || chunk.id === LIN_COLOR_24 ) {
+
+			var r = this.readByte( data );
+			var g = this.readByte( data );
+			var b = this.readByte( data );
+
+			color.setRGB( r / 255, g / 255, b / 255 );
+
+			this.debugMessage( '      Color: ' + color.r + ', ' + color.g + ', ' + color.b );
+
+		}	else if ( chunk.id === COLOR_F || chunk.id === LIN_COLOR_F ) {
+
+			var r = this.readFloat( data );
+			var g = this.readFloat( data );
+			var b = this.readFloat( data );
+
+			color.setRGB( r, g, b );
+
+			this.debugMessage( '      Color: ' + color.r + ', ' + color.g + ', ' + color.b );
+
+		}	else {
+
+			this.debugMessage( '      Unknown color chunk: ' + chunk.toString( 16 ) );
+
+		}
+
+		this.endChunk( chunk );
+		return color;
+
+	},
+
+	/**
+	 * Read next chunk of data.
+	 *
+	 * @method readChunk
+	 * @param {DataView} data Dataview.
+	 * @return {Object} Chunk of data read.
+	 */
+	readChunk: function ( data ) {
+
+		var chunk = {};
+
+		chunk.cur = this.position;
+		chunk.id = this.readWord( data );
+		chunk.size = this.readDWord( data );
+		chunk.end = chunk.cur + chunk.size;
+		chunk.cur += 6;
+
+		return chunk;
+
+	},
+
+	/**
+	 * Set position to the end of the current chunk of data.
+	 *
+	 * @method endChunk
+	 * @param {Object} chunk Data chunk.
+	 */
+	endChunk: function ( chunk ) {
+
+		this.position = chunk.end;
+
+	},
+
+	/**
+	 * Move to the next data chunk.
+	 *
+	 * @method nextChunk
+	 * @param {DataView} data Dataview.
+	 * @param {Object} chunk Data chunk.
+	 */
+	nextChunk: function ( data, chunk ) {
+
+		if ( chunk.cur >= chunk.end ) {
+
+			return 0;
+
+		}
+
+		this.position = chunk.cur;
+
+		try {
+
+			var next = this.readChunk( data );
+			chunk.cur += next.size;
+			return next.id;
+
+		}	catch ( e ) {
+
+			this.debugMessage( 'Unable to read chunk at ' + this.position );
+			return 0;
+
+		}
+
+	},
+
+	/**
+	 * Reset dataview position.
+	 *
+	 * @method resetPosition
+	 * @param {DataView} data Dataview.
+	 */
+	resetPosition: function () {
+
+		this.position -= 6;
+
+	},
+
+	/**
+	 * Read byte value.
+	 *
+	 * @method readByte
+	 * @param {DataView} data Dataview to read data from.
+	 * @return {Number} Data read from the dataview.
+	 */
+	readByte: function ( data ) {
+
+		var v = data.getUint8( this.position, true );
+		this.position += 1;
+		return v;
+
+	},
+
+	/**
+	 * Read 32 bit float value.
+	 *
+	 * @method readFloat
+	 * @param {DataView} data Dataview to read data from.
+	 * @return {Number} Data read from the dataview.
+	 */
+	readFloat: function ( data ) {
+
+		try {
+
+			var v = data.getFloat32( this.position, true );
+			this.position += 4;
+			return v;
+
+		}	catch ( e ) {
+
+			this.debugMessage( e + ' ' + this.position + ' ' + data.byteLength );
+
+		}
+
+	},
+
+	/**
+	 * Read 32 bit signed integer value.
+	 *
+	 * @method readInt
+	 * @param {DataView} data Dataview to read data from.
+	 * @return {Number} Data read from the dataview.
+	 */
+	readInt: function ( data ) {
+
+		var v = data.getInt32( this.position, true );
+		this.position += 4;
+		return v;
+
+	},
+
+	/**
+	 * Read 16 bit signed integer value.
+	 *
+	 * @method readShort
+	 * @param {DataView} data Dataview to read data from.
+	 * @return {Number} Data read from the dataview.
+	 */
+	readShort: function ( data ) {
+
+		var v = data.getInt16( this.position, true );
+		this.position += 2;
+		return v;
+
+	},
+
+	/**
+	 * Read 64 bit unsigned integer value.
+	 *
+	 * @method readDWord
+	 * @param {DataView} data Dataview to read data from.
+	 * @return {Number} Data read from the dataview.
+	 */
+	readDWord: function ( data ) {
+
+		var v = data.getUint32( this.position, true );
+		this.position += 4;
+		return v;
+
+	},
+
+	/**
+	 * Read 32 bit unsigned integer value.
+	 *
+	 * @method readWord
+	 * @param {DataView} data Dataview to read data from.
+	 * @return {Number} Data read from the dataview.
+	 */
+	readWord: function ( data ) {
+
+		var v = data.getUint16( this.position, true );
+		this.position += 2;
+		return v;
+
+	},
+
+	/**
+	 * Read string value.
+	 *
+	 * @method readString
+	 * @param {DataView} data Dataview to read data from.
+	 * @param {Number} maxLength Max size of the string to be read.
+	 * @return {String} Data read from the dataview.
+	 */
+	readString: function ( data, maxLength ) {
+
+		var s = '';
+
+		for ( var i = 0; i < maxLength; i ++ ) {
+
+			var c = this.readByte( data );
+			if ( ! c ) {
+
+				break;
+
+			}
+
+			s += String.fromCharCode( c );
+
+		}
+
+		return s;
+
+	},
+
+	/**
+	 * Set resource path used to determine the file path to attached resources.
+	 *
+	 * @method setPath
+	 * @param {String} path Path to resources.
+	 * @return Self for chaining.
+	 */
+	setPath: function ( path ) {
+
+		if ( path !== undefined ) {
+
+			this.path = path;
+
+		}
+
+		return this;
+
+	},
+
+	/**
+	 * Print debug message to the console.
+	 *
+	 * Is controlled by a flag to show or hide debug messages.
+	 *
+	 * @method debugMessage
+	 * @param {Object} message Debug message to print to the console.
+	 */
+	debugMessage: function ( message ) {
+
+		if ( this.debug ) {
+
+			console.log( message );
+
+		}
 
 	}
-
-	parseTextures( json, images ) {
-
-		function parseConstant( value, type ) {
-
-			if ( typeof value === 'number' ) return value;
-
-			console.warn( 'THREE.ObjectLoader.parseTexture: Constant should be in numeric form.', value );
-
-			return type[ value ];
-
-		}
-
-		const textures = {};
-
-		if ( json !== undefined ) {
-
-			for ( let i = 0, l = json.length; i < l; i ++ ) {
-
-				const data = json[ i ];
-
-				if ( data.image === undefined ) {
-
-					console.warn( 'THREE.ObjectLoader: No "image" specified for', data.uuid );
-
-				}
-
-				if ( images[ data.image ] === undefined ) {
-
-					console.warn( 'THREE.ObjectLoader: Undefined image', data.image );
-
-				}
-
-				let texture;
-				const image = images[ data.image ];
-
-				if ( Array.isArray( image ) ) {
-
-					texture = new CubeTexture( image );
-
-					if ( image.length === 6 ) texture.needsUpdate = true;
-
-				} else {
-
-					if ( image && image.data ) {
-
-						texture = new DataTexture( image.data, image.width, image.height );
-
-					} else {
-
-						texture = new Texture( image );
-
-					}
-
-					if ( image ) texture.needsUpdate = true; // textures can have undefined image data
-
-				}
-
-				texture.uuid = data.uuid;
-
-				if ( data.name !== undefined ) texture.name = data.name;
-
-				if ( data.mapping !== undefined ) texture.mapping = parseConstant( data.mapping, TEXTURE_MAPPING );
-
-				if ( data.offset !== undefined ) texture.offset.fromArray( data.offset );
-				if ( data.repeat !== undefined ) texture.repeat.fromArray( data.repeat );
-				if ( data.center !== undefined ) texture.center.fromArray( data.center );
-				if ( data.rotation !== undefined ) texture.rotation = data.rotation;
-
-				if ( data.wrap !== undefined ) {
-
-					texture.wrapS = parseConstant( data.wrap[ 0 ], TEXTURE_WRAPPING );
-					texture.wrapT = parseConstant( data.wrap[ 1 ], TEXTURE_WRAPPING );
-
-				}
-
-				if ( data.format !== undefined ) texture.format = data.format;
-				if ( data.type !== undefined ) texture.type = data.type;
-				if ( data.encoding !== undefined ) texture.encoding = data.encoding;
-
-				if ( data.minFilter !== undefined ) texture.minFilter = parseConstant( data.minFilter, TEXTURE_FILTER );
-				if ( data.magFilter !== undefined ) texture.magFilter = parseConstant( data.magFilter, TEXTURE_FILTER );
-				if ( data.anisotropy !== undefined ) texture.anisotropy = data.anisotropy;
-
-				if ( data.flipY !== undefined ) texture.flipY = data.flipY;
-
-				if ( data.premultiplyAlpha !== undefined ) texture.premultiplyAlpha = data.premultiplyAlpha;
-				if ( data.unpackAlignment !== undefined ) texture.unpackAlignment = data.unpackAlignment;
-
-				textures[ data.uuid ] = texture;
-
-			}
-
-		}
-
-		return textures;
-
-	}
-
-	parseObject( data, geometries, materials, animations ) {
-
-		let object;
-
-		function getGeometry( name ) {
-
-			if ( geometries[ name ] === undefined ) {
-
-				console.warn( 'THREE.ObjectLoader: Undefined geometry', name );
-
-			}
-
-			return geometries[ name ];
-
-		}
-
-		function getMaterial( name ) {
-
-			if ( name === undefined ) return undefined;
-
-			if ( Array.isArray( name ) ) {
-
-				const array = [];
-
-				for ( let i = 0, l = name.length; i < l; i ++ ) {
-
-					const uuid = name[ i ];
-
-					if ( materials[ uuid ] === undefined ) {
-
-						console.warn( 'THREE.ObjectLoader: Undefined material', uuid );
-
-					}
-
-					array.push( materials[ uuid ] );
-
-				}
-
-				return array;
-
-			}
-
-			if ( materials[ name ] === undefined ) {
-
-				console.warn( 'THREE.ObjectLoader: Undefined material', name );
-
-			}
-
-			return materials[ name ];
-
-		}
-
-		let geometry, material;
-
-		switch ( data.type ) {
-
-			case 'Scene':
-
-				object = new Scene();
-
-				if ( data.background !== undefined ) {
-
-					if ( Number.isInteger( data.background ) ) {
-
-						object.background = new Color( data.background );
-
-					}
-
-				}
-
-				if ( data.fog !== undefined ) {
-
-					if ( data.fog.type === 'Fog' ) {
-
-						object.fog = new Fog( data.fog.color, data.fog.near, data.fog.far );
-
-					} else if ( data.fog.type === 'FogExp2' ) {
-
-						object.fog = new FogExp2( data.fog.color, data.fog.density );
-
-					}
-
-				}
-
-				break;
-
-			case 'PerspectiveCamera':
-
-				object = new PerspectiveCamera( data.fov, data.aspect, data.near, data.far );
-
-				if ( data.focus !== undefined ) object.focus = data.focus;
-				if ( data.zoom !== undefined ) object.zoom = data.zoom;
-				if ( data.filmGauge !== undefined ) object.filmGauge = data.filmGauge;
-				if ( data.filmOffset !== undefined ) object.filmOffset = data.filmOffset;
-				if ( data.view !== undefined ) object.view = Object.assign( {}, data.view );
-
-				break;
-
-			case 'OrthographicCamera':
-
-				object = new OrthographicCamera( data.left, data.right, data.top, data.bottom, data.near, data.far );
-
-				if ( data.zoom !== undefined ) object.zoom = data.zoom;
-				if ( data.view !== undefined ) object.view = Object.assign( {}, data.view );
-
-				break;
-
-			case 'AmbientLight':
-
-				object = new AmbientLight( data.color, data.intensity );
-
-				break;
-
-			case 'DirectionalLight':
-
-				object = new DirectionalLight( data.color, data.intensity );
-
-				break;
-
-			case 'PointLight':
-
-				object = new PointLight( data.color, data.intensity, data.distance, data.decay );
-
-				break;
-
-			case 'RectAreaLight':
-
-				object = new RectAreaLight( data.color, data.intensity, data.width, data.height );
-
-				break;
-
-			case 'SpotLight':
-
-				object = new SpotLight( data.color, data.intensity, data.distance, data.angle, data.penumbra, data.decay );
-
-				break;
-
-			case 'HemisphereLight':
-
-				object = new HemisphereLight( data.color, data.groundColor, data.intensity );
-
-				break;
-
-			case 'LightProbe':
-
-				object = new LightProbe().fromJSON( data );
-
-				break;
-
-			case 'SkinnedMesh':
-
-				geometry = getGeometry( data.geometry );
-			 	material = getMaterial( data.material );
-
-				object = new SkinnedMesh( geometry, material );
-
-				if ( data.bindMode !== undefined ) object.bindMode = data.bindMode;
-				if ( data.bindMatrix !== undefined ) object.bindMatrix.fromArray( data.bindMatrix );
-				if ( data.skeleton !== undefined ) object.skeleton = data.skeleton;
-
-				break;
-
-			case 'Mesh':
-
-				geometry = getGeometry( data.geometry );
-				material = getMaterial( data.material );
-
-				object = new Mesh( geometry, material );
-
-				break;
-
-			case 'InstancedMesh':
-
-				geometry = getGeometry( data.geometry );
-				material = getMaterial( data.material );
-				const count = data.count;
-				const instanceMatrix = data.instanceMatrix;
-
-				object = new InstancedMesh( geometry, material, count );
-				object.instanceMatrix = new BufferAttribute( new Float32Array( instanceMatrix.array ), 16 );
-
-				break;
-
-			case 'LOD':
-
-				object = new LOD();
-
-				break;
-
-			case 'Line':
-
-				object = new Line( getGeometry( data.geometry ), getMaterial( data.material ) );
-
-				break;
-
-			case 'LineLoop':
-
-				object = new LineLoop( getGeometry( data.geometry ), getMaterial( data.material ) );
-
-				break;
-
-			case 'LineSegments':
-
-				object = new LineSegments( getGeometry( data.geometry ), getMaterial( data.material ) );
-
-				break;
-
-			case 'PointCloud':
-			case 'Points':
-
-				object = new Points( getGeometry( data.geometry ), getMaterial( data.material ) );
-
-				break;
-
-			case 'Sprite':
-
-				object = new Sprite( getMaterial( data.material ) );
-
-				break;
-
-			case 'Group':
-
-				object = new Group();
-
-				break;
-
-			case 'Bone':
-
-				object = new Bone();
-
-				break;
-
-			default:
-
-				object = new Object3D();
-
-		}
-
-		object.uuid = data.uuid;
-
-		if ( data.name !== undefined ) object.name = data.name;
-
-		if ( data.matrix !== undefined ) {
-
-			object.matrix.fromArray( data.matrix );
-
-			if ( data.matrixAutoUpdate !== undefined ) object.matrixAutoUpdate = data.matrixAutoUpdate;
-			if ( object.matrixAutoUpdate ) object.matrix.decompose( object.position, object.quaternion, object.scale );
-
-		} else {
-
-			if ( data.position !== undefined ) object.position.fromArray( data.position );
-			if ( data.rotation !== undefined ) object.rotation.fromArray( data.rotation );
-			if ( data.quaternion !== undefined ) object.quaternion.fromArray( data.quaternion );
-			if ( data.scale !== undefined ) object.scale.fromArray( data.scale );
-
-		}
-
-		if ( data.castShadow !== undefined ) object.castShadow = data.castShadow;
-		if ( data.receiveShadow !== undefined ) object.receiveShadow = data.receiveShadow;
-
-		if ( data.shadow ) {
-
-			if ( data.shadow.bias !== undefined ) object.shadow.bias = data.shadow.bias;
-			if ( data.shadow.normalBias !== undefined ) object.shadow.normalBias = data.shadow.normalBias;
-			if ( data.shadow.radius !== undefined ) object.shadow.radius = data.shadow.radius;
-			if ( data.shadow.mapSize !== undefined ) object.shadow.mapSize.fromArray( data.shadow.mapSize );
-			if ( data.shadow.camera !== undefined ) object.shadow.camera = this.parseObject( data.shadow.camera );
-
-		}
-
-		if ( data.visible !== undefined ) object.visible = data.visible;
-		if ( data.frustumCulled !== undefined ) object.frustumCulled = data.frustumCulled;
-		if ( data.renderOrder !== undefined ) object.renderOrder = data.renderOrder;
-		if ( data.userData !== undefined ) object.userData = data.userData;
-		if ( data.layers !== undefined ) object.layers.mask = data.layers;
-
-		if ( data.children !== undefined ) {
-
-			const children = data.children;
-
-			for ( let i = 0; i < children.length; i ++ ) {
-
-				object.add( this.parseObject( children[ i ], geometries, materials, animations ) );
-
-			}
-
-		}
-
-		if ( data.animations !== undefined ) {
-
-			const objectAnimations = data.animations;
-
-			for ( let i = 0; i < objectAnimations.length; i ++ ) {
-
-				const uuid = objectAnimations[ i ];
-
-				object.animations.push( animations[ uuid ] );
-
-			}
-
-		}
-
-		if ( data.type === 'LOD' ) {
-
-			if ( data.autoUpdate !== undefined ) object.autoUpdate = data.autoUpdate;
-
-			const levels = data.levels;
-
-			for ( let l = 0; l < levels.length; l ++ ) {
-
-				const level = levels[ l ];
-				const child = object.getObjectByProperty( 'uuid', level.object );
-
-				if ( child !== undefined ) {
-
-					object.addLevel( child, level.distance );
-
-				}
-
-			}
-
-		}
-
-		return object;
-
-	}
-
-	bindSkeletons( object, skeletons ) {
-
-		if ( Object.keys( skeletons ).length === 0 ) return;
-
-		object.traverse( function ( child ) {
-
-			if ( child.isSkinnedMesh === true && child.skeleton !== undefined ) {
-
-				const skeleton = skeletons[ child.skeleton ];
-
-				if ( skeleton === undefined ) {
-
-					console.warn( 'THREE.ObjectLoader: No skeleton found with UUID:', child.skeleton );
-
-				} else {
-
-					child.bind( skeleton, child.bindMatrix );
-
-				}
-
-			}
-
-		} );
-
-	}
-
-	/* DEPRECATED */
-
-	setTexturePath( value ) {
-
-		console.warn( 'THREE.ObjectLoader: .setTexturePath() has been renamed to .setResourcePath().' );
-		return this.setResourcePath( value );
-
-	}
-
-}
-
-const TEXTURE_MAPPING = {
-	UVMapping: UVMapping,
-	CubeReflectionMapping: CubeReflectionMapping,
-	CubeRefractionMapping: CubeRefractionMapping,
-	EquirectangularReflectionMapping: EquirectangularReflectionMapping,
-	EquirectangularRefractionMapping: EquirectangularRefractionMapping,
-	CubeUVReflectionMapping: CubeUVReflectionMapping,
-	CubeUVRefractionMapping: CubeUVRefractionMapping
 };
 
-const TEXTURE_WRAPPING = {
-	RepeatWrapping: RepeatWrapping,
-	ClampToEdgeWrapping: ClampToEdgeWrapping,
-	MirroredRepeatWrapping: MirroredRepeatWrapping
-};
-
-const TEXTURE_FILTER = {
-	NearestFilter: NearestFilter,
-	NearestMipmapNearestFilter: NearestMipmapNearestFilter,
-	NearestMipmapLinearFilter: NearestMipmapLinearFilter,
-	LinearFilter: LinearFilter,
-	LinearMipmapNearestFilter: LinearMipmapNearestFilter,
-	LinearMipmapLinearFilter: LinearMipmapLinearFilter
-};
-
-export { ObjectLoader };
+var NULL_CHUNK = 0x0000;
+var M3DMAGIC = 0x4D4D;
+var SMAGIC = 0x2D2D;
+var LMAGIC = 0x2D3D;
+var MLIBMAGIC = 0x3DAA;
+var MATMAGIC = 0x3DFF;
+var CMAGIC = 0xC23D;
+var M3D_VERSION = 0x0002;
+var M3D_KFVERSION = 0x0005;
+var COLOR_F = 0x0010;
+var COLOR_24 = 0x0011;
+var LIN_COLOR_24 = 0x0012;
+var LIN_COLOR_F = 0x0013;
+var INT_PERCENTAGE = 0x0030;
+var FLOAT_PERCENTAGE = 0x0031;
+var MDATA = 0x3D3D;
+var MESH_VERSION = 0x3D3E;
+var MASTER_SCALE = 0x0100;
+var LO_SHADOW_BIAS = 0x1400;
+var HI_SHADOW_BIAS = 0x1410;
+var SHADOW_MAP_SIZE = 0x1420;
+var SHADOW_SAMPLES = 0x1430;
+var SHADOW_RANGE = 0x1440;
+var SHADOW_FILTER = 0x1450;
+var RAY_BIAS = 0x1460;
+var O_CONSTS = 0x1500;
+var AMBIENT_LIGHT = 0x2100;
+var BIT_MAP = 0x1100;
+var SOLID_BGND = 0x1200;
+var V_GRADIENT = 0x1300;
+var USE_BIT_MAP = 0x1101;
+var USE_SOLID_BGND = 0x1201;
+var USE_V_GRADIENT = 0x1301;
+var FOG = 0x2200;
+var FOG_BGND = 0x2210;
+var LAYER_FOG = 0x2302;
+var DISTANCE_CUE = 0x2300;
+var DCUE_BGND = 0x2310;
+var USE_FOG = 0x2201;
+var USE_LAYER_FOG = 0x2303;
+var USE_DISTANCE_CUE = 0x2301;
+var MAT_ENTRY = 0xAFFF;
+var MAT_NAME = 0xA000;
+var MAT_AMBIENT = 0xA010;
+var MAT_DIFFUSE = 0xA020;
+var MAT_SPECULAR = 0xA030;
+var MAT_SHININESS = 0xA040;
+var MAT_SHIN2PCT = 0xA041;
+var MAT_TRANSPARENCY = 0xA050;
+var MAT_XPFALL = 0xA052;
+var MAT_USE_XPFALL = 0xA240;
+var MAT_REFBLUR = 0xA053;
+var MAT_SHADING = 0xA100;
+var MAT_USE_REFBLUR = 0xA250;
+var MAT_SELF_ILLUM = 0xA084;
+var MAT_TWO_SIDE = 0xA081;
+var MAT_DECAL = 0xA082;
+var MAT_ADDITIVE = 0xA083;
+var MAT_WIRE = 0xA085;
+var MAT_FACEMAP = 0xA088;
+var MAT_TRANSFALLOFF_IN = 0xA08A;
+var MAT_PHONGSOFT = 0xA08C;
+var MAT_WIREABS = 0xA08E;
+var MAT_WIRE_SIZE = 0xA087;
+var MAT_TEXMAP = 0xA200;
+var MAT_SXP_TEXT_DATA = 0xA320;
+var MAT_TEXMASK = 0xA33E;
+var MAT_SXP_TEXTMASK_DATA = 0xA32A;
+var MAT_TEX2MAP = 0xA33A;
+var MAT_SXP_TEXT2_DATA = 0xA321;
+var MAT_TEX2MASK = 0xA340;
+var MAT_SXP_TEXT2MASK_DATA = 0xA32C;
+var MAT_OPACMAP = 0xA210;
+var MAT_SXP_OPAC_DATA = 0xA322;
+var MAT_OPACMASK = 0xA342;
+var MAT_SXP_OPACMASK_DATA = 0xA32E;
+var MAT_BUMPMAP = 0xA230;
+var MAT_SXP_BUMP_DATA = 0xA324;
+var MAT_BUMPMASK = 0xA344;
+var MAT_SXP_BUMPMASK_DATA = 0xA330;
+var MAT_SPECMAP = 0xA204;
+var MAT_SXP_SPEC_DATA = 0xA325;
+var MAT_SPECMASK = 0xA348;
+var MAT_SXP_SPECMASK_DATA = 0xA332;
+var MAT_SHINMAP = 0xA33C;
+var MAT_SXP_SHIN_DATA = 0xA326;
+var MAT_SHINMASK = 0xA346;
+var MAT_SXP_SHINMASK_DATA = 0xA334;
+var MAT_SELFIMAP = 0xA33D;
+var MAT_SXP_SELFI_DATA = 0xA328;
+var MAT_SELFIMASK = 0xA34A;
+var MAT_SXP_SELFIMASK_DATA = 0xA336;
+var MAT_REFLMAP = 0xA220;
+var MAT_REFLMASK = 0xA34C;
+var MAT_SXP_REFLMASK_DATA = 0xA338;
+var MAT_ACUBIC = 0xA310;
+var MAT_MAPNAME = 0xA300;
+var MAT_MAP_TILING = 0xA351;
+var MAT_MAP_TEXBLUR = 0xA353;
+var MAT_MAP_USCALE = 0xA354;
+var MAT_MAP_VSCALE = 0xA356;
+var MAT_MAP_UOFFSET = 0xA358;
+var MAT_MAP_VOFFSET = 0xA35A;
+var MAT_MAP_ANG = 0xA35C;
+var MAT_MAP_COL1 = 0xA360;
+var MAT_MAP_COL2 = 0xA362;
+var MAT_MAP_RCOL = 0xA364;
+var MAT_MAP_GCOL = 0xA366;
+var MAT_MAP_BCOL = 0xA368;
+var NAMED_OBJECT = 0x4000;
+var N_DIRECT_LIGHT = 0x4600;
+var DL_OFF = 0x4620;
+var DL_OUTER_RANGE = 0x465A;
+var DL_INNER_RANGE = 0x4659;
+var DL_MULTIPLIER = 0x465B;
+var DL_EXCLUDE = 0x4654;
+var DL_ATTENUATE = 0x4625;
+var DL_SPOTLIGHT = 0x4610;
+var DL_SPOT_ROLL = 0x4656;
+var DL_SHADOWED = 0x4630;
+var DL_LOCAL_SHADOW2 = 0x4641;
+var DL_SEE_CONE = 0x4650;
+var DL_SPOT_RECTANGULAR = 0x4651;
+var DL_SPOT_ASPECT = 0x4657;
+var DL_SPOT_PROJECTOR = 0x4653;
+var DL_SPOT_OVERSHOOT = 0x4652;
+var DL_RAY_BIAS = 0x4658;
+var DL_RAYSHAD = 0x4627;
+var N_CAMERA = 0x4700;
+var CAM_SEE_CONE = 0x4710;
+var CAM_RANGES = 0x4720;
+var OBJ_HIDDEN = 0x4010;
+var OBJ_VIS_LOFTER = 0x4011;
+var OBJ_DOESNT_CAST = 0x4012;
+var OBJ_DONT_RECVSHADOW = 0x4017;
+var OBJ_MATTE = 0x4013;
+var OBJ_FAST = 0x4014;
+var OBJ_PROCEDURAL = 0x4015;
+var OBJ_FROZEN = 0x4016;
+var N_TRI_OBJECT = 0x4100;
+var POINT_ARRAY = 0x4110;
+var POINT_FLAG_ARRAY = 0x4111;
+var FACE_ARRAY = 0x4120;
+var MSH_MAT_GROUP = 0x4130;
+var SMOOTH_GROUP = 0x4150;
+var MSH_BOXMAP = 0x4190;
+var TEX_VERTS = 0x4140;
+var MESH_MATRIX = 0x4160;
+var MESH_COLOR = 0x4165;
+var MESH_TEXTURE_INFO = 0x4170;
+var KFDATA = 0xB000;
+var KFHDR = 0xB00A;
+var KFSEG = 0xB008;
+var KFCURTIME = 0xB009;
+var AMBIENT_NODE_TAG = 0xB001;
+var OBJECT_NODE_TAG = 0xB002;
+var CAMERA_NODE_TAG = 0xB003;
+var TARGET_NODE_TAG = 0xB004;
+var LIGHT_NODE_TAG = 0xB005;
+var L_TARGET_NODE_TAG = 0xB006;
+var SPOTLIGHT_NODE_TAG = 0xB007;
+var NODE_ID = 0xB030;
+var NODE_HDR = 0xB010;
+var PIVOT = 0xB013;
+var INSTANCE_NAME = 0xB011;
+var MORPH_SMOOTH = 0xB015;
+var BOUNDBOX = 0xB014;
+var POS_TRACK_TAG = 0xB020;
+var COL_TRACK_TAG = 0xB025;
+var ROT_TRACK_TAG = 0xB021;
+var SCL_TRACK_TAG = 0xB022;
+var MORPH_TRACK_TAG = 0xB026;
+var FOV_TRACK_TAG = 0xB023;
+var ROLL_TRACK_TAG = 0xB024;
+var HOT_TRACK_TAG = 0xB027;
+var FALL_TRACK_TAG = 0xB028;
+var HIDE_TRACK_TAG = 0xB029;
+var POLY_2D = 0x5000;
+var SHAPE_OK = 0x5010;
+var SHAPE_NOT_OK = 0x5011;
+var SHAPE_HOOK = 0x5020;
+var PATH_3D = 0x6000;
+var PATH_MATRIX = 0x6005;
+var SHAPE_2D = 0x6010;
+var M_SCALE = 0x6020;
+var M_TWIST = 0x6030;
+var M_TEETER = 0x6040;
+var M_FIT = 0x6050;
+var M_BEVEL = 0x6060;
+var XZ_CURVE = 0x6070;
+var YZ_CURVE = 0x6080;
+var INTERPCT = 0x6090;
+var DEFORM_LIMIT = 0x60A0;
+var USE_CONTOUR = 0x6100;
+var USE_TWEEN = 0x6110;
+var USE_SCALE = 0x6120;
+var USE_TWIST = 0x6130;
+var USE_TEETER = 0x6140;
+var USE_FIT = 0x6150;
+var USE_BEVEL = 0x6160;
+var DEFAULT_VIEW = 0x3000;
+var VIEW_TOP = 0x3010;
+var VIEW_BOTTOM = 0x3020;
+var VIEW_LEFT = 0x3030;
+var VIEW_RIGHT = 0x3040;
+var VIEW_FRONT = 0x3050;
+var VIEW_BACK = 0x3060;
+var VIEW_USER = 0x3070;
+var VIEW_CAMERA = 0x3080;
+var VIEW_WINDOW = 0x3090;
+var VIEWPORT_LAYOUT_OLD = 0x7000;
+var VIEWPORT_DATA_OLD = 0x7010;
+var VIEWPORT_LAYOUT = 0x7001;
+var VIEWPORT_DATA = 0x7011;
+var VIEWPORT_DATA_3 = 0x7012;
+var VIEWPORT_SIZE = 0x7020;
+var NETWORK_VIEW = 0x7030;
