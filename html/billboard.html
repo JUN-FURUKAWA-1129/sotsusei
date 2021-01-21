@@ -19,17 +19,32 @@
             import { Rhino3dmLoader } from '../scripts/3DMLoader.js';
             
             const vertexSource = `
-            void main() {
-      vec4 worldPosition = modelMatrix * vec4( position, 1.0 );
-      vec4 mvPosition =  viewMatrix * worldPosition;
-      gl_Position = projectionMatrix * mvPosition;
-    }
 
+            uniform float sec;
+
+varying  vec4 vColor;
+varying vec2 vUv;
+
+void main() {
+    vColor = vec4(1.0-sin(sec)*0.5, 1.0, 0, 1.0);
+    vUv=uv;
+
+    vec4 worldPosition = modelMatrix * vec4( position, 1.0 );
+    vec4 mvPosition =  viewMatrix * worldPosition;
+    gl_Position = projectionMatrix * mvPosition;
+}
             `;
 
             const fragmentSource = `
-            void main() {
-      gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+            uniform float sec;
+uniform sampler2D texture0;
+
+varying vec2 vUv;
+varying vec4 vColor;
+
+    void main() {
+        vec4 smpColor=texture2D(texture0,vUv);
+        gl_FragColor =vColor*smpColor;
     }
             `;
 
@@ -41,6 +56,7 @@
 			let target;
 			let i;
             let Rhino;
+            let sec;
 
 			init();
 			animate();
@@ -72,7 +88,7 @@
 				directionalLight.intensity = 0.2;
 				scene.add( directionalLight );
 
-				const ambientLight=new THREE.AmbientLight(0xffff,0.1);
+				const ambientLight=new THREE.AmbientLight(0xffff,1.0);
 				scene.add(ambientLight);
 
 				meshList=[];
@@ -85,17 +101,32 @@
 					object.name="square";
 					Rhino=object;
 					scene.add( object );
-				} );
+                } );
+
+                //load images
+                const tex_loader=new THREE.TextureLoader();
+                const image = tex_loader.load("../images/cyber-city.jpg");
+
+                //add uniform variables
+                container.uniforms={
+                    sec:{
+                        value: sec
+                    },
+                    texture0:{
+                        value: image
+                    }
+                }
 
                 //create geometry
                 //cylinder
 				const myCylinder = new THREE.CylinderGeometry(1.5,1.5,0.3,32,4,true);
                 const mat=new THREE.ShaderMaterial({
+                    uniforms: container.uniforms,
                     vertexShader: vertexSource,
                     fragmentShader: fragmentSource
                 })
                 const material = new THREE.MeshStandardMaterial({
-                    color: 0xffffff,
+                    map: image,
                     side: THREE.DoubleSide
                 });
                 const mesh1= new THREE.Mesh(myCylinder,material)
@@ -190,7 +221,8 @@
 			function animate() {
 
                 raycaster.setFromCamera(mouse,camera);
-                const sec = performance.now()/1000;
+                sec = performance.now()/1000;
+                container.uniforms.sec.value=sec;
 
                 meshList[1].rotation.y=sec*0.1;
 
