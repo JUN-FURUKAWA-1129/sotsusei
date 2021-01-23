@@ -496,4 +496,16 @@ function test7(){
 }
 
 function test8(){
+  const filename="download.csv";
+  const data="test,test,test\ntest,test,test,test";
+  const bom = new Uint8Array([0xef,0xbb,0xbf]);
+  const blob = new Blob([bom,data],{type:"text/csv"});
+
+ 
+    const url=(window.URL||window.webkitURL).createObjectURL(blob);
+    const download=document.createElement("a");
+    download.href=url;
+    download.download=filename;
+    download.click();
+    (window.URL||window.webkitURL).revokeObjectURL(url);
 }
