@@ -65,7 +65,7 @@
 
         <script type="module">
 
-			import * as THREE from '../build/three.module.js';
+            import * as THREE from '../build/three.module.js';
             import { OrbitControls } from '../scripts/OrbitControls.js';
             import { Rhino3dmLoader } from '../scripts/3DMLoader.js';
             
@@ -83,6 +83,7 @@
             let Rhino;
             let sec;
             let dir;
+            let camera_TP;
 
                 init();
 			    animate();
@@ -103,12 +104,37 @@
                 //camera
                 camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 2000 );
                 camera.position.set( 0, - 10, 1.5 );
-                camera.lookAt(new THREE.Vector3(0,0,0));
+                var cam_target=new THREE.Vector3(0,0,0);
+                camera.lookAt(cam_target);
+
+                //camera_TP= new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 1, 2000 );
+                //camera_TP.position.set( 0, - 10, 1.5 );
+                //controls = new OrbitControls( camera_TP, container );
 
                 scene = new THREE.Scene();
-                
-                controls = new OrbitControls( camera, container );
+				canvas.addEventListener("mousemove",handleMouseMove);
 
+				function handleMouseMove(event){
+					const element = event.currentTarget;
+
+					const x = event.clientX - element.offsetLeft;
+					const y = event.clientY - element.offsetTop;
+
+					const w = element.offsetWidth;
+					const h = element.offsetHeight;
+
+					mouse.x=(x/w)*2-1;
+                    mouse.y=-(y/h)*2+1;
+
+                    if(event.buttons===1){
+                        cam_target.x-=event.movementX*0.1;
+                        cam_target.z+=event.movementY*0.1;
+                        camera.lookAt(cam_target);
+                    }                    
+                    /*if(controls.scope.enable){
+                        dir = camera.getWorldDirection();
+                    }*/
+				}
 				//light
 				const directionalLight = new THREE.DirectionalLight( 0xffffff );
 				directionalLight.position.set( 0, 0, 2 );
@@ -160,6 +186,7 @@
                 });
                 const mesh0=new THREE.Mesh(mySphere,mat_sky);
                 scene.add(mesh0);
+                meshList.push(mesh0);
 
                 //cylinder
 				const myCylinder = new THREE.CylinderGeometry(1.5,1.5,0.3,32,4,true);
@@ -215,24 +242,7 @@
 				animate();
 
 				//eventlistener
-				canvas.addEventListener("mousemove",handleMouseMove);
 
-				function handleMouseMove(event){
-					const element = event.currentTarget;
-
-					const x = event.clientX - element.offsetLeft;
-					const y = event.clientY - element.offsetTop;
-
-					const w = element.offsetWidth;
-					const h = element.offsetHeight;
-
-					mouse.x=(x/w)*2-1;
-                    mouse.y=-(y/h)*2+1;
-                    
-                    /*if(controls.scope.enable){
-                        dir = camera.getWorldDirection();
-                    }*/
-				}
 
 				window.addEventListener( 'resize', resize, false );
                 
@@ -242,11 +252,9 @@
 				function clickPosition(event){
                     if(target.name==="Cylinder"){
                         console.log("You clicked cylinder!");
-                        target=null;
                     }
                     if(target.name==="Box"){
                         console.log("You clicked box!");
-                        target=null;
                     }
 					/*scene.remove(target);
 					i=meshList.indexOf(target);
@@ -264,10 +272,28 @@
                     var keyname=event.key;
                     if(keyname==="w"){
                         const pos=camera.position;
+                        dir =camera.getWorldDirection();
 
-                        pos.x+=dir.x*0.01;
-                        pos.y+=dir.y*0.01;
-                        pos.z+=dir.z*0.01;
+                        pos.x+=dir.x*0.1;
+                        pos.y+=dir.y*0.1;
+                        pos.z+=dir.z*0.1;
+                        cam_target.x+=dir.x*0.1;
+                        cam_target.y+=dir.y*0.1;
+                        cam_target.z+=dir.z*0.1;
+                        
+                        console.log(dir);
+                    }
+
+                    if(keyname==="s"){
+                        const pos=camera.position;
+                        dir =camera.getWorldDirection();
+
+                        pos.x-=dir.x*0.1;
+                        pos.y-=dir.y*0.1;
+                        pos.z-=dir.z*0.1;
+                        cam_target.x-=dir.x*0.1;
+                        cam_target.y-=dir.y*0.1;
+                        cam_target.z-=dir.z*0.1;
                         
                         console.log(dir);
                     }
@@ -292,7 +318,11 @@
                 sec = performance.now()/1000;
                 container.uniforms.sec.value=sec;
 
-                meshList[1].rotation.z=sec*0.1;
+                meshList.map(mesh=>{
+                    if(mesh.name==="Box"){
+                        mesh.rotation.z=sec*0.1;
+                    }
+                })
 
 				const intersects = raycaster.intersectObjects(meshList);
 
@@ -304,8 +334,7 @@
 						//mesh.material.color.setHex(0xffffff);
 					}
 				})
-				controls.update();
-				renderer.render( scene, camera );
+				renderer.render( scene, camera);
 
 				requestAnimationFrame( animate );
 
