@@ -1,0 +1,124 @@
+server listen on :3000
+(node:4922) DeprecationWarning: current Server Discovery and Monitoring engine is deprecated, and will be removed in a future version. To use the new Server Discover and Monitoring engine, pass option { useUnifiedTopology: true } to the MongoClient constructor.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Connected successfully to MongoDB server
+Connected successfully to MongoDB server
+[0mGET / [36m304 [0m10.094 ms - -[0m
+[0mGET /stylesheets/style.css [36m304 [0m1.640 ms - -[0m
+[0mGET /javascripts/test-2.js [36m304 [0m0.435 ms - -[0m
+[0mGET /javascripts/Threejs-test1.js [36m304 [0m0.409 ms - -[0m
+[0mGET /javascripts/OrbitControls.js [36m304 [0m0.380 ms - -[0m
+[0mGET /build/three.module.js [36m304 [0m0.405 ms - -[0m
+[0mGET /images/cyber-city.jpg [36m304 [0m0.371 ms - -[0m
+server listen on :3000
+(node:5170) DeprecationWarning: current Server Discovery and Monitoring engine is deprecated, and will be removed in a future version. To use the new Server Discover and Monitoring engine, pass option { useUnifiedTopology: true } to the MongoClient constructor.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Connected successfully to MongoDB server
+Connected successfully to MongoDB server
+[0mGET / [36m304 [0m10.431 ms - -[0m
+[0mGET /stylesheets/style.css [36m304 [0m1.665 ms - -[0m
+[0mGET /javascripts/test-2.js [36m304 [0m0.595 ms - -[0m
+[0mGET /javascripts/Threejs-test1.js [36m304 [0m0.495 ms - -[0m
+[0mGET /javascripts/OrbitControls.js [36m304 [0m0.831 ms - -[0m
+[0mGET /build/three.module.js [36m304 [0m0.832 ms - -[0m
+[0mGET /images/cyber-city.jpg [36m304 [0m0.516 ms - -[0m
+[0mGET / [36m304 [0m1.561 ms - -[0m
+[0mGET /stylesheets/style.css [36m304 [0m0.549 ms - -[0m
+[0mGET /javascripts/test-2.js [36m304 [0m0.592 ms - -[0m
+[0mGET /javascripts/Threejs-test1.js [36m304 [0m0.383 ms - -[0m
+[0mGET /javascripts/OrbitControls.js [36m304 [0m0.413 ms - -[0m
+[0mGET /build/three.module.js [36m304 [0m0.375 ms - -[0m
+[0mGET /images/cyber-city.jpg [36m304 [0m0.372 ms - -[0m
+[0mGET /game [32m200 [0m1.632 ms - 2092[0m
+[0mGET /socket.io/socket.io.js [33m404 [0m3.391 ms - 913[0m
+[0mGET /stylesheets/style.css [36m304 [0m4.405 ms - -[0m
+[0mGET /javascripts/game.js [32m200 [0m1.869 ms - 8932[0m
+[0mGET /javascripts/chat.js [32m200 [0m2.648 ms - 3600[0m
+[0mGET /images/player.gif [32m200 [0m2.851 ms - 1144[0m
+[0mGET /javascripts/three.js [32m200 [0m3.175 ms - 1285558[0m
+[0mGET /billboard [32m200 [0m2.796 ms - 7110[0m
+[0mGET /stylesheets/style.css [36m304 [0m0.480 ms - -[0m
+[0mGET /build/three.module.js [36m304 [0m0.462 ms - -[0m
+[0mGET /javascripts/OrbitControls.js [36m304 [0m0.420 ms - -[0m
+[0mGET /javascripts/3DMLoader.js [32m200 [0m0.592 ms - 29852[0m
+[0mGET /images/cyber-city.jpg [36m304 [0m0.510 ms - -[0m
+[0mGET /models/square.3dm [32m200 [0m1.766 ms - 565253[0m
+[0mGET /javascripts/rhino3dm.js [32m200 [0m0.680 ms - 141901[0m
+[0mGET /javascripts/rhino3dm.wasm [32m200 [0m0.556 ms - 2700760[0m
+[0mGET / [36m304 [0m2.599 ms - -[0m
+[0mGET /stylesheets/style.css [36m304 [0m1.611 ms - -[0m
+[0mGET /javascripts/test-2.js [36m304 [0m1.597 ms - -[0m
+[0mGET /javascripts/Threejs-test1.js [36m304 [0m0.376 ms - -[0m
+[0mGET /javascripts/OrbitControls.js [36m304 [0m0.326 ms - -[0m
+[0mGET /build/three.module.js [36m304 [0m0.328 ms - -[0m
+[0mGET /images/cyber-city.jpg [36m304 [0m0.335 ms - -[0m
+server listen on :3000
+(node:9643) DeprecationWarning: current Server Discovery and Monitoring engine is deprecated, and will be removed in a future version. To use the new Server Discover and Monitoring engine, pass option { useUnifiedTopology: true } to the MongoClient constructor.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Connected successfully to MongoDB server
+Connected successfully to MongoDB server
+[0mGET /board [32m200 [0m3.992 ms - -[0m
+{"kakikomi":"ここで改行します。→\r\n←ここが2行目の始まりです"}
+parsedBodyの中身[object Object]
+inserted
+[0mPOST /up [32m200 [0m10.085 ms - -[0m
+[0mGET /board [32m200 [0m1.592 ms - -[0m
+server listen on :3000
+(node:9663) DeprecationWarning: current Server Discovery and Monitoring engine is deprecated, and will be removed in a future version. To use the new Server Discover and Monitoring engine, pass option { useUnifiedTopology: true } to the MongoClient constructor.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Port 3000 is already in use
+[0mGET /board [32m200 [0m0.457 ms - -[0m
+{"kakikomi":"ここで改行します。→\r\n←ここが2行目の始まりです"}
+parsedBodyの中身[object Object]
+inserted
+[0mPOST /up [32m200 [0m0.799 ms - -[0m
+server listen on :3000
+(node:9678) DeprecationWarning: current Server Discovery and Monitoring engine is deprecated, and will be removed in a future version. To use the new Server Discover and Monitoring engine, pass option { useUnifiedTopology: true } to the MongoClient constructor.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Connected successfully to MongoDB server
+Connected successfully to MongoDB server
+[0mGET /board [32m200 [0m3.845 ms - -[0m
+{"kakikomi":"ここで改行します。→\r\n←ここが2行目の始まりです"}
+parsedBodyの中身[object Object]
+inserted
+[0mPOST /up [32m200 [0m9.775 ms - -[0m
+server listen on :3000
+(node:9704) DeprecationWarning: current Server Discovery and Monitoring engine is deprecated, and will be removed in a future version. To use the new Server Discover and Monitoring engine, pass option { useUnifiedTopology: true } to the MongoClient constructor.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Connected successfully to MongoDB server
+Connected successfully to MongoDB server
+[0mGET /board [32m200 [0m3.766 ms - -[0m
+{"kakikomi":"ここで改行します。→\r\n←ここが2行目の始まりです"}
+parsedBodyの中身[object Object]
+inserted
+[0mPOST /up [32m200 [0m10.304 ms - -[0m
+[0mGET /board [32m200 [0m0.699 ms - -[0m
+[0mGET /board [32m200 [0m0.510 ms - -[0m
+[0mGET /favicon.ico [33m404 [0m7.483 ms - 913[0m
+[0mGET / [32m200 [0m2.135 ms - 4574[0m
+[0mGET /stylesheets/style.css [32m200 [0m2.850 ms - 1720[0m
+[0mGET /stylesheets/colorbox.css [32m200 [0m0.698 ms - 4488[0m
+[0mGET /javascripts/OrbitControls.js [32m200 [0m1.383 ms - 25402[0m
+[0mGET /javascripts/Threejs-test1.js [32m200 [0m1.727 ms - 12882[0m
+[0mGET /javascripts/jquery.colorbox-min.js [32m200 [0m2.587 ms - 11960[0m
+[0mGET /javascripts/test-2.js [32m200 [0m2.578 ms - 1250[0m
+[0mGET /javascripts/jquery.colorbox-ja.js [32m200 [0m1.453 ms - 465[0m
+[0mGET /images/cyber-city.jpg [32m200 [0m0.645 ms - 589946[0m
+[0mGET /build/three.module.js [32m200 [0m0.526 ms - 1150027[0m
+[0mGET /favicon.ico [33m404 [0m1.525 ms - 913[0m
+[0mGET /billboard [32m200 [0m1.569 ms - 7110[0m
+[0mGET /stylesheets/style.css [36m304 [0m1.024 ms - -[0m
+[0mGET /javascripts/OrbitControls.js [36m304 [0m0.895 ms - -[0m
+[0mGET /build/three.module.js [36m304 [0m0.772 ms - -[0m
+[0mGET /javascripts/3DMLoader.js [32m200 [0m0.644 ms - 29852[0m
+[0mGET /images/cyber-city.jpg [36m304 [0m0.377 ms - -[0m
+[0mGET /models/square.3dm [32m200 [0m0.653 ms - 565253[0m
+[0mGET /javascripts/rhino3dm.js [32m200 [0m1.238 ms - 141901[0m
+[0mGET /javascripts/rhino3dm.wasm [32m200 [0m1.084 ms - 2700760[0m
+[0mGET /webgl [32m200 [0m1.260 ms - 5103[0m
+[0mGET /stylesheets/style.css [36m304 [0m0.398 ms - -[0m
+[0mGET /build/three.module.js [36m304 [0m0.569 ms - -[0m
+[0mGET /javascripts/OrbitControls.js [36m304 [0m0.337 ms - -[0m
+[0mGET /javascripts/3DMLoader.js [36m304 [0m0.711 ms - -[0m
+[0mGET /javascripts/dat.gui.module.js [32m200 [0m0.903 ms - 85463[0m
+[0mGET /models/Rhino_Logo.3dm [32m200 [0m0.624 ms - 2318920[0m
