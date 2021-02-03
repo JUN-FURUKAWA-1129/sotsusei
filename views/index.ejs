@@ -448,14 +448,16 @@
 
                 if(!playerMesh){
                     console.log('create player mesh');
+
+                    console.log(players);
                     playerMesh = new THREE.Group();
                     playerMesh.castShadow = true;
                     Meshes[player.id] = playerMesh;
-                    scene.add(playerMesh);
                     loader.load('/models/man.3dm', function (object) {
                         object.name = "body";
                         playerMesh.add(object);
                     });
+                    scene.add(playerMesh);
                 }
 
                 playerMesh.used = true;
@@ -468,6 +470,20 @@
                     camera.rotation.set(Math.PI/2, player.angle-Math.PI/2, 0);
                     console.log("camera move");
                 }
+
+                Object.keys(Meshes).forEach((key) => {
+                    const mesh = Meshes[key];
+                    if(!mesh.used){
+                        console.log('removing mesh', key);
+                        scene.remove(mesh);
+                        mesh.traverse((mesh2) => {
+                            if(mesh2.geometry){
+                                mesh2.geometry.dispose();
+                            }
+                        });
+                    delete Meshes[key];
+                    }
+                });
             });
         });
  
