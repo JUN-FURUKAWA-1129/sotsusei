@@ -471,7 +471,10 @@
                     console.log("camera move");
                 }
 
-                Object.keys(Meshes).forEach((key) => {
+                
+            });
+            
+            Object.keys(Meshes).forEach((key) => {
                     const mesh = Meshes[key];
                     if(!mesh.used){
                         console.log('removing mesh', key);
@@ -483,7 +486,6 @@
                         });
                     delete Meshes[key];
                     }
-                });
             });
         });
  
