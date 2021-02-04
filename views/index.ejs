@@ -448,32 +448,33 @@
 
                 if(!playerMesh){
                     console.log('create player mesh');
-
-                    console.log(players);
                     playerMesh = new THREE.Group();
                     playerMesh.castShadow = true;
                     Meshes[player.id] = playerMesh;
-                    loader.load('/models/man.3dm', function (object) {
-                        object.name = "body";
-                        playerMesh.add(object);
-                    });
                     scene.add(playerMesh);
                 }
-
+                    
                 playerMesh.used = true;
                 playerMesh.position.set(player.x, player.y, 0);
                 playerMesh.rotation.z = player.angle;
+
+                if(!playerMesh.getObjectByName('body')){
+                    console.log('create body mesh');
+                    loader.load('/models/man.3dm', function (object) {
+                        object.castShadow = true;
+                        object.name = 'body';
+                        playerMesh.add(object);
+                    });
+                }
         
                 if(player.socketID === socket.id){
                     // Your player
                     camera.position.set(player.x, player.y, 1500);
                     camera.rotation.set(Math.PI/2, player.angle-Math.PI/2, 0);
-                    console.log("camera move");
                 }
-
                 
             });
-            
+
             Object.keys(Meshes).forEach((key) => {
                     const mesh = Meshes[key];
                     if(!mesh.used){
